@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>鼠标连点器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <header class="hero">
+          <p class="eyebrow">跨平台自动化</p>
+          <h1>鼠标连点器</h1>
+          <p class="subtitle">设置坐标、点击间隔和按键模拟（例如 <code>F</code>），即可自动执行。</p>
+        </header>
+
+        <section class="grid">
+          <label class="field">
+            <span>X 坐标</span>
+            <input id="xInput" type="number" value="600" min="0" />
+          </label>
+          <label class="field">
+            <span>Y 坐标</span>
+            <input id="yInput" type="number" value="400" min="0" />
+          </label>
+          <label class="field">
+            <span>点击间隔（毫秒）</span>
+            <input id="intervalInput" type="number" value="200" min="10" />
+          </label>
+          <label class="field">
+            <span>模拟按键（可选）</span>
+            <input id="keyInput" type="text" maxlength="12" placeholder="例如 F；留空则不按键" />
+          </label>
+        </section>
+
+        <section class="actions">
+          <button id="captureBtn" class="btn ghost">读取当前鼠标位置</button>
+          <button id="pickBtn" class="btn warm">拾取模式（回车确认）</button>
+          <button id="startBtn" class="btn primary">开始</button>
+          <button id="stopBtn" class="btn danger" disabled>停止</button>
+        </section>
+
+        <section class="meta">
+          <span id="statusPill" class="pill idle">空闲</span>
+          <span id="helpText">支持字母、数字、<code>F1-F12</code>、方向键和常见按键；留空仅执行鼠标点击。</span>
+        </section>
+
+        <p id="pickInfo" class="pick-info" hidden></p>
+        <p id="errorBox" class="error" hidden></p>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

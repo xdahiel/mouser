@@ -1,0 +1,71 @@
+{
+  "name": "mouser-autoclicker",
+  "version": "1.0.0",
+  "description": "Cross-platform Electron auto-clicker with key simulation",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "icons:generate": "node scripts/generate-icons.js",
+    "dist:mac": "npm run icons:generate && electron-builder --mac dmg --publish never",
+    "dist:win": "npm run icons:generate && electron-builder --win nsis --publish never",
+    "dist:win:portable": "npm run icons:generate && electron-builder --win portable --x64 --publish never",
+    "dist:all": "npm run icons:generate && electron-builder --mac dmg --win nsis --publish never"
+  },
+  "keywords": [
+    "electron",
+    "auto-clicker",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.6"
+  },
+  "devDependencies": {
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.kami.mouser",
+    "productName": "Mouser",
+    "icon": "build/icons/icon.png",
+    "files": [
+      "src/**/*",
+      "scripts/**/*",
+      "build/icons/icon.png",
+      "build/icons/icon.ico",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "build/icons/icon.png",
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+    "win": {
+      "icon": "build/icons/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-${version}-setup-${arch}.${ext}"
+    }
+  }
+}
