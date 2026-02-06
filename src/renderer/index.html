@@ -18,42 +18,64 @@
         <header class="hero">
           <p class="eyebrow">跨平台自动化</p>
           <h1>鼠标连点器</h1>
-          <p class="subtitle">设置坐标、点击间隔和按键模拟（例如 <code>F</code>），即可自动执行。</p>
+          <p class="subtitle">支持保存多个 Profile（位置 + 间隔 + 按键），可选中后编辑与执行。</p>
         </header>
 
-        <section class="grid">
-          <label class="field">
-            <span>X 坐标</span>
-            <input id="xInput" type="number" value="600" min="0" />
-          </label>
-          <label class="field">
-            <span>Y 坐标</span>
-            <input id="yInput" type="number" value="400" min="0" />
-          </label>
-          <label class="field">
-            <span>点击间隔（毫秒）</span>
-            <input id="intervalInput" type="number" value="200" min="10" />
-          </label>
-          <label class="field">
-            <span>模拟按键（可选）</span>
-            <input id="keyInput" type="text" maxlength="12" placeholder="例如 F；留空则不按键" />
-          </label>
-        </section>
+        <section class="workspace">
+          <aside class="profiles">
+            <h2>Profile 列表</h2>
 
-        <section class="actions">
-          <button id="captureBtn" class="btn ghost">读取当前鼠标位置</button>
-          <button id="pickBtn" class="btn warm">拾取模式（回车确认）</button>
-          <button id="startBtn" class="btn primary">开始</button>
-          <button id="stopBtn" class="btn danger" disabled>停止</button>
-        </section>
+            <label class="field">
+              <span>Profile 名称</span>
+              <input id="profileNameInput" type="text" maxlength="40" placeholder="例如：游戏挂机-右上角" />
+            </label>
 
-        <section class="meta">
-          <span id="statusPill" class="pill idle">空闲</span>
-          <span id="helpText">支持字母、数字、<code>F1-F12</code>、方向键和常见按键；留空仅执行鼠标点击。</span>
-        </section>
+            <div class="profile-actions">
+              <button id="newProfileBtn" class="btn ghost">新建</button>
+              <button id="saveProfileBtn" class="btn primary">保存/更新</button>
+              <button id="deleteProfileBtn" class="btn danger">删除</button>
+              <button id="runProfileBtn" class="btn warm">执行选中</button>
+            </div>
 
-        <p id="pickInfo" class="pick-info" hidden></p>
-        <p id="errorBox" class="error" hidden></p>
+            <ul id="profileList" class="profile-list"></ul>
+          </aside>
+
+          <section class="editor">
+            <section class="grid">
+              <label class="field">
+                <span>X 坐标</span>
+                <input id="xInput" type="number" value="600" min="0" />
+              </label>
+              <label class="field">
+                <span>Y 坐标</span>
+                <input id="yInput" type="number" value="400" min="0" />
+              </label>
+              <label class="field">
+                <span>点击间隔（毫秒）</span>
+                <input id="intervalInput" type="number" value="200" min="10" />
+              </label>
+              <label class="field">
+                <span>模拟按键（可选）</span>
+                <input id="keyInput" type="text" maxlength="12" placeholder="例如 F；留空则不按键" />
+              </label>
+            </section>
+
+            <section class="actions">
+              <button id="captureBtn" class="btn ghost">读取当前鼠标位置</button>
+              <button id="pickBtn" class="btn warm">拾取模式（回车确认）</button>
+              <button id="startBtn" class="btn primary">开始</button>
+              <button id="stopBtn" class="btn danger" disabled>停止</button>
+            </section>
+
+            <section class="meta">
+              <span id="statusPill" class="pill idle">空闲</span>
+              <span id="helpText">支持字母、数字、<code>F1-F12</code>、方向键和常见按键；留空仅执行鼠标点击。</span>
+            </section>
+
+            <p id="pickInfo" class="pick-info" hidden></p>
+            <p id="errorBox" class="error" hidden></p>
+          </section>
+        </section>
       </section>
     </main>
 

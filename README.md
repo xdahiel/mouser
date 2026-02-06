@@ -43,3 +43,10 @@ npm run dist:win:portable
 - `Start`: Starts auto-clicking at interval in milliseconds.
 - `Keyboard Key`: Optional. Supports letters (`F`), numbers, `F1-F12`, arrows, and common keys (`Enter`, `Esc`, etc.).
 - `Stop`: Stops automation.
+
+## Profiles
+
+- Name a profile and click `Save/Update` to persist settings (position, interval, key).
+- Select a profile from the list to load it into the editor for changes.
+- Click `Run Selected` to execute the selected profile directly.
+- Profile list is stored locally and survives app restart.

@@ -1,3 +1,12 @@
+const STORAGE_KEY = 'mouser_profiles_v1';
+
+const profileNameInput = document.getElementById('profileNameInput');
+const profileList = document.getElementById('profileList');
+const newProfileBtn = document.getElementById('newProfileBtn');
+const saveProfileBtn = document.getElementById('saveProfileBtn');
+const deleteProfileBtn = document.getElementById('deleteProfileBtn');
+const runProfileBtn = document.getElementById('runProfileBtn');
+
 const xInput = document.getElementById('xInput');
 const yInput = document.getElementById('yInput');
 const intervalInput = document.getElementById('intervalInput');
@@ -14,28 +23,8 @@ const errorBox = document.getElementById('errorBox');
 
 let running = false;
 let picking = false;
-
-function setStatus() {
-  if (running) {
-    statusPill.classList.remove('idle', 'picking');
-    statusPill.classList.add('running');
-    statusPill.textContent = '运行中';
-  } else if (picking) {
-    statusPill.classList.remove('idle', 'running');
-    statusPill.classList.add('picking');
-    statusPill.textContent = '拾取中';
-  } else {
-    statusPill.classList.remove('running', 'picking');
-    statusPill.classList.add('idle');
-    statusPill.textContent = '空闲';
-  }
-
-  startBtn.disabled = running || picking;
-  stopBtn.disabled = !running;
-  captureBtn.disabled = running || picking;
-  pickBtn.disabled = running;
-  pickBtn.textContent = picking ? '取消拾取模式（Esc）' : '拾取模式（回车确认）';
-}
+let profiles = [];
+let selectedProfileId = null;
 
 function showPickInfo(message) {
   if (!message) {
@@ -59,14 +48,261 @@ function showError(message) {
   errorBox.textContent = message;
 }
 
-function getConfig() {
+function getConfigFromForm() {
   return {
     x: Number(xInput.value),
     y: Number(yInput.value),
     interval: Number(intervalInput.value),
-    key: keyInput.value
+    key: keyInput.value.trim()
   };
 }
+
+function applyConfigToForm(config) {
+  xInput.value = config.x;
+  yInput.value = config.y;
+  intervalInput.value = config.interval;
+  keyInput.value = config.key || '';
+}
+
+function validateConfig(config) {
+  if (!Number.isFinite(config.x) || !Number.isFinite(config.y)) {
+    return 'X 和 Y 必须是有效数字。';
+  }
+
+  if (!Number.isFinite(config.interval) || config.interval < 10) {
+    return '点击间隔必须至少为 10 毫秒。';
+  }
+
+  return '';
+}
+
+function getProfileById(id) {
+  return profiles.find((item) => item.id === id) || null;
+}
+
+function persistProfiles() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+}
+
+function createProfileFromForm(id) {
+  const name = profileNameInput.value.trim();
+  const config = getConfigFromForm();
+  const validationError = validateConfig(config);
+
+  if (!name) {
+    return { error: '请先填写 Profile 名称。' };
+  }
+
+  if (validationError) {
+    return { error: validationError };
+  }
+
+  return {
+    profile: {
+      id,
+      name,
+      x: Math.round(config.x),
+      y: Math.round(config.y),
+      interval: Math.round(config.interval),
+      key: config.key,
+      updatedAt: Date.now()
+    }
+  };
+}
+
+function renderProfiles() {
+  profileList.innerHTML = '';
+
+  if (!profiles.length) {
+    const empty = document.createElement('li');
+    empty.className = 'profile-item';
+    empty.textContent = '暂无 Profile，填写参数后点击「保存/更新」。';
+    profileList.appendChild(empty);
+    return;
+  }
+
+  const sorted = [...profiles].sort((a, b) => b.updatedAt - a.updatedAt);
+
+  for (const profile of sorted) {
+    const item = document.createElement('li');
+    item.className = 'profile-item';
+    if (profile.id === selectedProfileId) {
+      item.classList.add('active');
+    }
+
+    const name = document.createElement('p');
+    name.className = 'profile-name';
+    name.textContent = profile.name;
+
+    const desc = document.createElement('p');
+    desc.className = 'profile-desc';
+    const keyDesc = profile.key ? profile.key : '无按键';
+    desc.textContent = `X${profile.x} Y${profile.y} | ${profile.interval}ms | ${keyDesc}`;
+
+    item.appendChild(name);
+    item.appendChild(desc);
+
+    item.addEventListener('click', () => {
+      selectedProfileId = profile.id;
+      profileNameInput.value = profile.name;
+      applyConfigToForm(profile);
+      renderProfiles();
+      showError('');
+      showPickInfo(`已选择 Profile：${profile.name}`);
+      setStatus();
+    });
+
+    profileList.appendChild(item);
+  }
+}
+
+function loadProfiles() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      profiles = [];
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      profiles = [];
+      return;
+    }
+
+    profiles = parsed
+      .filter((item) => item && typeof item.name === 'string')
+      .map((item) => ({
+        id: String(item.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+        name: String(item.name).slice(0, 40),
+        x: Number(item.x) || 0,
+        y: Number(item.y) || 0,
+        interval: Math.max(10, Number(item.interval) || 100),
+        key: typeof item.key === 'string' ? item.key : '',
+        updatedAt: Number(item.updatedAt) || Date.now()
+      }));
+  } catch (_error) {
+    profiles = [];
+  }
+}
+
+function setStatus() {
+  if (running) {
+    statusPill.classList.remove('idle', 'picking');
+    statusPill.classList.add('running');
+    statusPill.textContent = '运行中';
+  } else if (picking) {
+    statusPill.classList.remove('idle', 'running');
+    statusPill.classList.add('picking');
+    statusPill.textContent = '拾取中';
+  } else {
+    statusPill.classList.remove('running', 'picking');
+    statusPill.classList.add('idle');
+    statusPill.textContent = '空闲';
+  }
+
+  startBtn.disabled = running || picking;
+  stopBtn.disabled = !running;
+  captureBtn.disabled = running || picking;
+  pickBtn.disabled = running;
+  pickBtn.textContent = picking ? '取消拾取模式（Esc）' : '拾取模式（回车确认）';
+
+  newProfileBtn.disabled = running || picking;
+  saveProfileBtn.disabled = running || picking;
+  deleteProfileBtn.disabled = running || picking || !selectedProfileId;
+  runProfileBtn.disabled = running || picking || !selectedProfileId;
+  profileNameInput.disabled = running || picking;
+}
+
+async function startAutomation(config) {
+  const error = validateConfig(config);
+  if (error) {
+    showError(error);
+    return;
+  }
+
+  try {
+    await window.automation.start(config);
+    running = true;
+    picking = false;
+    setStatus();
+  } catch (startError) {
+    running = false;
+    setStatus();
+    showError(startError?.message || '启动自动点击失败');
+  }
+}
+
+newProfileBtn.addEventListener('click', () => {
+  selectedProfileId = null;
+  profileNameInput.value = '';
+  showError('');
+  showPickInfo('已切换到新建模式，填写名称后点击「保存/更新」。');
+  renderProfiles();
+  setStatus();
+});
+
+saveProfileBtn.addEventListener('click', () => {
+  showError('');
+
+  const targetId = selectedProfileId || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const result = createProfileFromForm(targetId);
+  if (result.error) {
+    showError(result.error);
+    return;
+  }
+
+  const nextProfile = result.profile;
+  const existingIndex = profiles.findIndex((item) => item.id === targetId);
+
+  if (existingIndex >= 0) {
+    profiles[existingIndex] = nextProfile;
+  } else {
+    profiles.push(nextProfile);
+  }
+
+  selectedProfileId = targetId;
+  persistProfiles();
+  renderProfiles();
+  setStatus();
+  showPickInfo(`Profile 已保存：${nextProfile.name}`);
+});
+
+deleteProfileBtn.addEventListener('click', () => {
+  if (!selectedProfileId) {
+    showError('请先选中要删除的 Profile。');
+    return;
+  }
+
+  const target = getProfileById(selectedProfileId);
+  profiles = profiles.filter((item) => item.id !== selectedProfileId);
+  selectedProfileId = null;
+  persistProfiles();
+  renderProfiles();
+  setStatus();
+  showError('');
+  showPickInfo(target ? `已删除 Profile：${target.name}` : '已删除 Profile。');
+});
+
+runProfileBtn.addEventListener('click', async () => {
+  showError('');
+  showPickInfo('');
+
+  if (!selectedProfileId) {
+    showError('请先选中一个 Profile。');
+    return;
+  }
+
+  const target = getProfileById(selectedProfileId);
+  if (!target) {
+    showError('选中的 Profile 不存在。');
+    return;
+  }
+
+  applyConfigToForm(target);
+  profileNameInput.value = target.name;
+  await startAutomation(target);
+});
 
 captureBtn.addEventListener('click', async () => {
   showError('');
@@ -105,27 +341,7 @@ startBtn.addEventListener('click', async () => {
   showError('');
   showPickInfo('');
 
-  const config = getConfig();
-  if (!Number.isFinite(config.x) || !Number.isFinite(config.y)) {
-    showError('X 和 Y 必须是有效数字。');
-    return;
-  }
-
-  if (!Number.isFinite(config.interval) || config.interval < 10) {
-    showError('点击间隔必须至少为 10 毫秒。');
-    return;
-  }
-
-  try {
-    await window.automation.start(config);
-    running = true;
-    picking = false;
-    setStatus();
-  } catch (error) {
-    running = false;
-    setStatus();
-    showError(error?.message || '启动自动点击失败');
-  }
+  await startAutomation(getConfigFromForm());
 });
 
 stopBtn.addEventListener('click', async () => {
@@ -182,7 +398,7 @@ window.automation.onError((message) => {
 window.addEventListener('beforeunload', async () => {
   try {
     await window.automation.stopPickMode();
-  } catch (error) {
+  } catch (_error) {
     // No action needed during unload cleanup.
   }
 
@@ -192,9 +408,11 @@ window.addEventListener('beforeunload', async () => {
 
   try {
     await window.automation.stop();
-  } catch (error) {
+  } catch (_error) {
     // No action needed during unload cleanup.
   }
 });
 
+loadProfiles();
+renderProfiles();
 setStatus();
