@@ -62,6 +62,7 @@ function applyConfigToForm(config) {
   yInput.value = config.y;
   intervalInput.value = config.interval;
   keyInput.value = config.key || '';
+  syncLastConfigToMain();
 }
 
 function validateConfig(config) {
@@ -74,6 +75,20 @@ function validateConfig(config) {
   }
 
   return '';
+}
+
+async function syncLastConfigToMain() {
+  const config = getConfigFromForm();
+  const error = validateConfig(config);
+  if (error) {
+    return;
+  }
+
+  try {
+    await window.automation.updateLastConfig(config);
+  } catch (_error) {
+    // Ignore sync failures; manual start still validates and reports errors.
+  }
 }
 
 function getProfileById(id) {
@@ -222,6 +237,7 @@ async function startAutomation(config) {
   }
 
   try {
+    await window.automation.updateLastConfig(config);
     await window.automation.start(config);
     running = true;
     picking = false;
@@ -355,6 +371,12 @@ stopBtn.addEventListener('click', async () => {
   }
 });
 
+[xInput, yInput, intervalInput, keyInput].forEach((input) => {
+  input.addEventListener('input', () => {
+    syncLastConfigToMain();
+  });
+});
+
 window.automation.onPickPosition((position) => {
   if (!picking || !position) {
     return;
@@ -395,6 +417,19 @@ window.automation.onError((message) => {
   setStatus();
 });
 
+window.automation.onRunningChanged((payload) => {
+  running = Boolean(payload?.running);
+  setStatus();
+
+  if (payload?.source === 'hotkey') {
+    if (running) {
+      showPickInfo('已通过全局快捷键启动：Ctrl/Command + Alt + W');
+    } else {
+      showPickInfo('已通过全局快捷键暂停：Ctrl/Command + Alt + E');
+    }
+  }
+});
+
 window.addEventListener('beforeunload', async () => {
   try {
     await window.automation.stopPickMode();
@@ -415,4 +450,5 @@ window.addEventListener('beforeunload', async () => {
 
 loadProfiles();
 renderProfiles();
+syncLastConfigToMain();
 setStatus();

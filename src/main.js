@@ -6,6 +6,15 @@ let mainWindow;
 let clickTimer = null;
 let pickTimer = null;
 let pickMode = false;
+let lastConfig = {
+  x: 600,
+  y: 400,
+  interval: 200,
+  key: ''
+};
+
+const START_SHORTCUT = 'CommandOrControl+Alt+W';
+const STOP_SHORTCUT = 'CommandOrControl+Alt+E';
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -29,6 +38,15 @@ function sendToRenderer(channel, payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(channel, payload);
   }
+}
+
+function sanitizeConfig(config) {
+  return {
+    x: Number.isFinite(config?.x) ? Math.round(config.x) : 0,
+    y: Number.isFinite(config?.y) ? Math.round(config.y) : 0,
+    interval: Number.isFinite(config?.interval) ? Math.max(10, Math.round(config.interval)) : 100,
+    key: typeof config?.key === 'string' ? config.key : ''
+  };
 }
 
 function normalizeKey(raw) {
@@ -92,6 +110,67 @@ async function performAction(config) {
   const parsedKey = normalizeKey(key);
   if (parsedKey) {
     await keyboard.type(parsedKey);
+  }
+}
+
+async function stopAutomation(source = 'manual') {
+  if (clickTimer) {
+    clearInterval(clickTimer);
+    clickTimer = null;
+  }
+
+  sendToRenderer('automation:running-changed', { running: false, source });
+  return { running: false };
+}
+
+async function startAutomation(config, source = 'manual') {
+  if (clickTimer) {
+    clearInterval(clickTimer);
+    clickTimer = null;
+  }
+
+  await stopPickMode('cancelled');
+
+  const sanitized = sanitizeConfig(config);
+  lastConfig = sanitized;
+
+  await performAction(sanitized);
+
+  clickTimer = setInterval(async () => {
+    try {
+      await performAction(sanitized);
+    } catch (error) {
+      sendToRenderer('automation:error', error.message || 'Automation failed');
+      await stopAutomation('error');
+    }
+  }, sanitized.interval);
+
+  sendToRenderer('automation:running-changed', { running: true, source });
+  return { running: true };
+}
+
+function registerGlobalShortcuts() {
+  const startRegistered = globalShortcut.register(START_SHORTCUT, async () => {
+    try {
+      await startAutomation(lastConfig, 'hotkey');
+    } catch (error) {
+      sendToRenderer('automation:error', error.message || '通过快捷键启动失败');
+    }
+  });
+
+  const stopRegistered = globalShortcut.register(STOP_SHORTCUT, async () => {
+    try {
+      await stopAutomation('hotkey');
+    } catch (error) {
+      sendToRenderer('automation:error', error.message || '通过快捷键停止失败');
+    }
+  });
+
+  if (!startRegistered || !stopRegistered) {
+    sendToRenderer(
+      'automation:error',
+      `全局快捷键注册失败。请检查是否与其他应用冲突：${START_SHORTCUT} / ${STOP_SHORTCUT}`
+    );
   }
 }
 
@@ -166,45 +245,20 @@ ipcMain.handle('automation:capture-position', async () => {
 
 ipcMain.handle('automation:start-pick-mode', async () => startPickMode());
 ipcMain.handle('automation:stop-pick-mode', async () => stopPickMode('cancelled'));
+ipcMain.handle('automation:update-last-config', async (_event, config) => {
+  lastConfig = sanitizeConfig(config);
+  return { ok: true };
+});
 
 ipcMain.handle('automation:start', async (_event, config) => {
-  if (clickTimer) {
-    clearInterval(clickTimer);
-    clickTimer = null;
-  }
-
-  await stopPickMode('cancelled');
-
-  const sanitized = {
-    x: Number.isFinite(config?.x) ? Math.round(config.x) : 0,
-    y: Number.isFinite(config?.y) ? Math.round(config.y) : 0,
-    interval: Number.isFinite(config?.interval) ? Math.max(10, Math.round(config.interval)) : 100,
-    key: typeof config?.key === 'string' ? config.key : ''
-  };
-
-  await performAction(sanitized);
-
-  clickTimer = setInterval(async () => {
-    try {
-      await performAction(sanitized);
-    } catch (error) {
-      sendToRenderer('automation:error', error.message || 'Automation failed');
-    }
-  }, sanitized.interval);
-
-  return { running: true };
+  return startAutomation(config, 'manual');
 });
 
-ipcMain.handle('automation:stop', async () => {
-  if (clickTimer) {
-    clearInterval(clickTimer);
-    clickTimer = null;
-  }
-  return { running: false };
-});
+ipcMain.handle('automation:stop', async () => stopAutomation('manual'));
 
 app.whenReady().then(() => {
   createWindow();
+  registerGlobalShortcuts();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('automation', {
   capturePosition: () => ipcRenderer.invoke('automation:capture-position'),
   startPickMode: () => ipcRenderer.invoke('automation:start-pick-mode'),
   stopPickMode: () => ipcRenderer.invoke('automation:stop-pick-mode'),
+  updateLastConfig: (config) => ipcRenderer.invoke('automation:update-last-config', config),
   start: (config) => ipcRenderer.invoke('automation:start', config),
   stop: () => ipcRenderer.invoke('automation:stop'),
   onError: (handler) => {
@@ -20,5 +21,10 @@ contextBridge.exposeInMainWorld('automation', {
     const wrapped = (_event, payload) => handler(payload);
     ipcRenderer.on('automation:pick-mode-ended', wrapped);
     return () => ipcRenderer.removeListener('automation:pick-mode-ended', wrapped);
+  },
+  onRunningChanged: (handler) => {
+    const wrapped = (_event, payload) => handler(payload);
+    ipcRenderer.on('automation:running-changed', wrapped);
+    return () => ipcRenderer.removeListener('automation:running-changed', wrapped);
   }
 });
